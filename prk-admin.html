@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PRK MODS — Admin Panel</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg:#0a0a0f;--bg2:#111118;--bg3:#16161f;--bg4:#1c1c28;
+    --border:#ffffff12;--border2:#ffffff22;--border3:#ffffff35;
+    --text:#e8e8f0;--text2:#9090aa;--text3:#555570;
+    --gold:#ffd700;--gold2:#ffaa00;--blue:#2979ff;--blue2:#1565c0;
+    --green:#00e676;--green2:#1b5e20;--red:#ff1744;--red2:#b71c1c;
+    --purple:#9c27b0;--cyan:#00bcd4;--orange:#ff6d00;
+    --radius:10px;--radius2:14px;--radius3:20px;
+  }
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;overflow-x:hidden}
+  #login-screen{display:flex;position:fixed;inset:0;background:#0a0a0f;z-index:9999;align-items:center;justify-content:center}
+  .login-box{background:#111118;border:1px solid #ffd70044;border-radius:20px;padding:40px 32px;width:90%;max-width:380px}
+  .login-icon{text-align:center;font-size:48px;margin-bottom:8px}
+  .login-title{text-align:center;font-size:22px;font-weight:700;color:#ffd700;margin-bottom:4px;letter-spacing:2px}
+  .login-sub{text-align:center;font-size:12px;color:#555570;margin-bottom:28px}
+  .login-input{width:100%;background:#16161f;border:1px solid #ffffff22;border-radius:10px;color:#e8e8f0;padding:12px 14px;font-size:14px;outline:none;margin-bottom:12px;transition:border .2s}
+  .login-input:focus{border-color:#ffd700}
+  .login-btn{width:100%;background:linear-gradient(90deg,#ffd700,#ff8c00);border:none;border-radius:12px;color:#000;font-size:15px;font-weight:700;padding:14px;cursor:pointer;transition:opacity .2s}
+  .login-btn:hover{opacity:.88}
+  .login-btn:active{opacity:.7}
+  #login-error{text-align:center;color:#ff1744;font-size:12px;margin-top:12px;min-height:18px}
+  .login-border-anim{animation:loginBorder 2s linear infinite}
+  @keyframes loginBorder{0%{border-color:#ffd70044}25%{border-color:#00e67644}50%{border-color:#2979ff44}75%{border-color:#ff174444}100%{border-color:#ffd70044}}
+  #nav{position:fixed;top:0;left:0;right:0;height:56px;background:var(--bg2);border-bottom:1px solid var(--border2);display:flex;align-items:center;padding:0 20px;gap:16px;z-index:100}
+  #nav .logo{font-weight:700;font-size:16px;color:var(--gold);letter-spacing:2px;border:1px solid var(--gold);padding:4px 12px;border-radius:6px}
+  #nav .nav-links{display:flex;gap:4px;margin-left:8px}
+  .nav-btn{background:transparent;border:none;color:var(--text2);padding:6px 14px;border-radius:var(--radius);cursor:pointer;font-size:13px;transition:all .2s;white-space:nowrap}
+  .nav-btn:hover,.nav-btn.active{background:var(--bg4);color:var(--text)}
+  .nav-btn.active{border:1px solid var(--border3)}
+  #nav .status{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2)}
+  .dot{width:8px;height:8px;border-radius:50%;background:#555}
+  .dot.connected{background:var(--green)}
+  .logout-btn{background:transparent;border:1px solid var(--border2);color:var(--text2);padding:5px 12px;border-radius:8px;cursor:pointer;font-size:12px;transition:all .2s}
+  .logout-btn:hover{border-color:var(--red);color:var(--red)}
+  #app{padding-top:56px;display:flex;min-height:100vh}
+  #sidebar{width:220px;min-height:calc(100vh - 56px);background:var(--bg2);border-right:1px solid var(--border);padding:16px 0;flex-shrink:0;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto}
+  #main{flex:1;padding:24px;overflow-x:hidden}
+  .side-section{padding:0 12px 8px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-top:8px}
+  .side-item{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;font-size:13px;color:var(--text2);transition:all .2s;border-left:2px solid transparent}
+  .side-item:hover{background:var(--bg3);color:var(--text)}
+  .side-item.active{background:var(--bg3);color:var(--gold);border-left-color:var(--gold)}
+  .side-item i{font-size:16px}
+  .section{display:none}
+  .section.show{display:block}
+  .card{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius2);padding:20px}
+  .card-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+  .card-title i{font-size:18px;color:var(--gold)}
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px}
+  .stat-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:16px 20px}
+  .stat-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+  .stat-val{font-size:28px;font-weight:700;color:var(--text)}
+  .stat-val.gold{color:var(--gold)}
+  .stat-val.green{color:var(--green)}
+  .stat-val.red{color:var(--red)}
+  .stat-val.blue{color:var(--blue)}
+  .btn{padding:8px 16px;border-radius:var(--radius);border:1px solid;cursor:pointer;font-size:13px;font-weight:500;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+  .btn-gold{background:#1a1400;border-color:var(--gold);color:var(--gold)}
+  .btn-gold:hover{background:#2a2000}
+  .btn-green{background:var(--green2);border-color:var(--green);color:var(--green)}
+  .btn-green:hover{opacity:.85}
+  .btn-red{background:var(--red2);border-color:var(--red);color:#fff}
+  .btn-red:hover{opacity:.85}
+  .btn-blue{background:var(--blue2);border-color:var(--blue);color:#fff}
+  .btn-blue:hover{opacity:.85}
+  .btn-ghost{background:transparent;border-color:var(--border3);color:var(--text2)}
+  .btn-ghost:hover{color:var(--text);border-color:var(--text2)}
+  .btn-sm{padding:5px 10px;font-size:12px}
+  .btn-icon{padding:6px;border-radius:8px;background:transparent;border:1px solid var(--border2);color:var(--text2);cursor:pointer;transition:all .15s}
+  .btn-icon:hover{color:var(--text);border-color:var(--border3)}
+  .table-wrap{overflow-x:auto;border-radius:var(--radius2);border:1px solid var(--border)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{background:var(--bg3);color:var(--text2);padding:10px 14px;text-align:left;font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)}
+  td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:var(--bg3)}
+  .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+  .badge-green{background:#00e67622;color:var(--green);border:1px solid #00e67633}
+  .badge-red{background:#ff174422;color:var(--red);border:1px solid #ff174433}
+  .badge-gold{background:#ffd70022;color:var(--gold);border:1px solid #ffd70033}
+  .badge-blue{background:#2979ff22;color:#64b5f6;border:1px solid #2979ff33}
+  .badge-gray{background:#ffffff11;color:var(--text2);border:1px solid var(--border)}
+  .badge-orange{background:#ff6d0022;color:var(--orange);border:1px solid #ff6d0033}
+  .form-group{margin-bottom:14px}
+  .form-label{display:block;font-size:12px;color:var(--text2);margin-bottom:6px}
+  .form-input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);padding:9px 12px;font-size:13px;outline:none;transition:border .2s}
+  .form-input:focus{border-color:var(--gold)}
+  .form-input::placeholder{color:var(--text3)}
+  select.form-input option{background:var(--bg3)}
+  .toggle{position:relative;width:42px;height:22px;cursor:pointer}
+  .toggle input{opacity:0;width:0;height:0}
+  .toggle-slider{position:absolute;top:0;left:0;right:0;bottom:0;background:#333;border-radius:22px;transition:.3s}
+  .toggle-slider:before{content:'';position:absolute;height:16px;width:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
+  .toggle input:checked + .toggle-slider{background:var(--green2);border:1px solid var(--green)}
+  .toggle input:checked + .toggle-slider:before{transform:translateX(20px)}
+  .modal-bg{position:fixed;inset:0;background:#000000cc;z-index:999;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:.2s}
+  .modal-bg.show{opacity:1;pointer-events:all}
+  .modal{background:var(--bg2);border:1px solid var(--border3);border-radius:var(--radius3);padding:24px;width:90%;max-width:540px;max-height:85vh;overflow-y:auto;transform:scale(.94);transition:.2s}
+  .modal-bg.show .modal{transform:scale(1)}
+  .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+  .modal-title{font-size:16px;font-weight:600;color:var(--gold)}
+  .feat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .feat-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg3);border-radius:var(--radius);border:1px solid var(--border)}
+  .feat-name{font-size:13px;color:var(--text)}
+  .search-wrap{position:relative;flex:1}
+  .search-wrap i{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:16px}
+  .search-input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);padding:8px 12px 8px 34px;font-size:13px;outline:none}
+  .search-input:focus{border-color:var(--gold)}
+  .toolbar{display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+  .copy-id{cursor:pointer;font-family:monospace;font-size:11px;padding:2px 6px;background:var(--bg3);border-radius:4px;color:var(--cyan);border:1px solid var(--border);transition:.15s}
+  .copy-id:hover{border-color:var(--cyan)}
+  .config-row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--border)}
+  .config-row:last-child{border-bottom:none}
+  .config-key{font-size:13px;font-weight:500}
+  .config-desc{font-size:12px;color:var(--text3);margin-top:2px}
+  .log-item{padding:10px 0;border-bottom:1px solid var(--border);font-size:12px;display:flex;gap:10px;align-items:flex-start}
+  .log-time{color:var(--text3);white-space:nowrap;min-width:120px}
+  .log-msg{color:var(--text2)}
+  .key-mono{font-family:monospace;font-size:13px;color:var(--cyan);letter-spacing:1px}
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--border3);border-radius:3px}
+  .loading{text-align:center;padding:40px;color:var(--text3);font-size:13px}
+  .spinner{display:inline-block;width:20px;height:20px;border:2px solid var(--border3);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;margin-right:8px;vertical-align:middle}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+  .section-title{font-size:20px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:10px}
+  .section-title i{color:var(--gold);font-size:22px}
+  @media(max-width:700px){#sidebar{display:none}#main{padding:12px}.feat-grid{grid-template-columns:1fr}.stats-grid{grid-template-columns:1fr 1fr}}
+  #toast{position:fixed;bottom:24px;right:24px;background:var(--bg3);border:1px solid var(--border3);color:var(--text);padding:12px 18px;border-radius:var(--radius2);font-size:13px;z-index:9999;transform:translateY(80px);opacity:0;transition:.3s;max-width:300px}
+  #toast.show{transform:translateY(0);opacity:1}
+  #toast.success{border-color:var(--green);color:var(--green)}
+  #toast.error{border-color:var(--red);color:var(--red)}
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-box login-border-anim">
+    <div class="login-icon">🛡</div>
+    <div class="login-title">PRK ADMIN</div>
+    <div class="login-sub">Authorized Access Only</div>
+    <input class="login-input" id="login-email" type="email" placeholder="Email"
+      onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
+    <input class="login-input" id="login-pass" type="password" placeholder="Password"
+      onkeydown="if(event.key==='Enter')adminLogin()">
+    <button class="login-btn" onclick="adminLogin()">LOGIN</button>
+    <div id="login-error"></div>
+  </div>
+</div>
+
+<nav id="nav" style="display:none">
+  <div class="logo">PRK MODS</div>
+  <div class="nav-links">
+    <button class="nav-btn active" onclick="showSection('dashboard',this)"><i class="ti ti-layout-dashboard"></i> Dashboard</button>
+    <button class="nav-btn" onclick="showSection('devices',this)"><i class="ti ti-device-mobile"></i> Devices</button>
+    <button class="nav-btn" onclick="showSection('keys',this)"><i class="ti ti-key"></i> Keys</button>
+    <button class="nav-btn" onclick="showSection('config',this)"><i class="ti ti-settings"></i> Config</button>
+    <button class="nav-btn" onclick="showSection('logs',this)"><i class="ti ti-list"></i> Logs</button>
+  </div>
+  <div class="status">
+    <div class="dot" id="fbDot"></div>
+    <span id="fbStatus">Connecting...</span>
+    <button class="logout-btn" onclick="adminLogout()"><i class="ti ti-logout"></i> Logout</button>
+  </div>
+</nav>
+
+<div id="app" style="display:none">
+<div id="sidebar">
+  <div class="side-section">Main</div>
+  <div class="side-item active" onclick="showSection('dashboard',null,this)"><i class="ti ti-layout-dashboard"></i>Dashboard</div>
+  <div class="side-item" onclick="showSection('devices',null,this)"><i class="ti ti-device-mobile"></i>Devices</div>
+  <div class="side-item" onclick="showSection('keys',null,this)"><i class="ti ti-key"></i>Keys</div>
+  <div class="side-section">Control</div>
+  <div class="side-item" onclick="showSection('config',null,this)"><i class="ti ti-settings"></i>Config</div>
+  <div class="side-item" onclick="showSection('features',null,this)"><i class="ti ti-toggle-right"></i>Default Features</div>
+  <div class="side-section">Monitor</div>
+  <div class="side-item" onclick="showSection('logs',null,this)"><i class="ti ti-list"></i>Activity Logs</div>
+</div>
+
+<div id="main">
+
+<div id="sec-dashboard" class="section show">
+  <div class="section-header">
+    <div class="section-title"><i class="ti ti-layout-dashboard"></i>Dashboard</div>
+    <button class="btn btn-gold btn-sm" onclick="reloadAll()"><i class="ti ti-refresh"></i>Refresh</button>
+  </div>
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-label">Total Devices</div><div class="stat-val gold" id="s-total">—</div></div>
+    <div class="stat-card"><div class="stat-label">Active</div><div class="stat-val green" id="s-active">—</div></div>
+    <div class="stat-card"><div class="stat-label">Banned</div><div class="stat-val red" id="s-banned">—</div></div>
+    <div class="stat-card"><div class="stat-label">Total Keys</div><div class="stat-val blue" id="s-keys">—</div></div>
+    <div class="stat-card"><div class="stat-label">Valid Keys</div><div class="stat-val green" id="s-vkeys">—</div></div>
+    <div class="stat-card"><div class="stat-label">Expired Keys</div><div class="stat-val red" id="s-ekeys">—</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="card">
+      <div class="card-title"><i class="ti ti-device-mobile"></i>Recent Devices</div>
+      <div id="recentDevices" class="loading"><span class="spinner"></span>Loading...</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><i class="ti ti-settings"></i>App Config</div>
+      <div id="dashConfig" class="loading"><span class="spinner"></span>Loading...</div>
+    </div>
+  </div>
+</div>
+
+<div id="sec-devices" class="section">
+  <div class="section-header">
+    <div class="section-title"><i class="ti ti-device-mobile"></i>Devices</div>
+    <button class="btn btn-gold btn-sm" onclick="setDefaultFeaturesAll()"><i class="ti ti-layers-intersect"></i>Set Defaults All</button>
+  </div>
+  <div class="toolbar">
+    <div class="search-wrap"><i class="ti ti-search"></i><input class="search-input" id="deviceSearch" placeholder="Search device ID, model, status..." oninput="filterDevices()"></div>
+    <select class="form-input" style="width:auto;padding:8px 12px" id="devFilter" onchange="filterDevices()">
+      <option value="all">All Status</option>
+      <option value="active">Active</option>
+      <option value="banned">Banned</option>
+    </select>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Device ID</th><th>Model</th><th>Status</th><th>Features</th><th>Last Active</th><th>Actions</th></tr></thead>
+      <tbody id="deviceTable"><tr><td colspan="6" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="sec-keys" class="section">
+  <div class="section-header">
+    <div class="section-title"><i class="ti ti-key"></i>License Keys</div>
+    <button class="btn btn-gold btn-sm" onclick="openModal('modal-addkey')"><i class="ti ti-plus"></i>Create Key</button>
+  </div>
+  <div class="toolbar">
+    <div class="search-wrap"><i class="ti ti-search"></i><input class="search-input" id="keySearch" placeholder="Search key..." oninput="filterKeys()"></div>
+    <select class="form-input" style="width:auto;padding:8px 12px" id="keyFilter" onchange="filterKeys()">
+      <option value="all">All</option>
+      <option value="VALID">Valid</option>
+      <option value="EXPIRED">Expired</option>
+      <option value="BANNED">Banned</option>
+    </select>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Key</th><th>Status</th><th>Device Bound</th><th>Expires</th><th>Actions</th></tr></thead>
+      <tbody id="keyTable"><tr><td colspan="5" class="loading"><span class="spinner"></span>Loading...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="sec-config" class="section">
+  <div class="section-header">
+    <div class="section-title"><i class="ti ti-settings"></i>App Config</div>
+    <button class="btn btn-gold btn-sm" onclick="saveConfig()"><i class="ti ti-device-floppy"></i>Save All</button>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="card">
+      <div class="card-title"><i class="ti ti-toggle-right"></i>App Controls</div>
+      <div id="configControls" class="loading"><span class="spinner"></span>Loading...</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><i class="ti ti-layout-grid"></i>Global Features</div>
+      <div id="globalFeatures" class="loading"><span class="spinner"></span>Loading...</div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <div class="card-title"><i class="ti ti-message-circle"></i>Broadcast Message</div>
+    <div class="form-group">
+      <label class="form-label">Message to all users</label>
+      <textarea class="form-input" id="configMsg" rows="3" style="resize:vertical" placeholder="Enter message..."></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Version String</label>
+      <input class="form-input" id="configVersion" placeholder="e.g. 3.0">
+    </div>
+  </div>
+</div>
+
+<div id="sec-features" class="section">
+  <div class="section-header">
+    <div class="section-title"><i class="ti ti-toggle-right"></i>Default Features Template</div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-blue btn-sm" onclick="saveDefaultFeatures()"><i class="ti ti-device-floppy"></i>Save Template</button>
+      <button class="btn btn-green btn-sm" onclick="applyDefaultToAll()"><i class="ti ti-device-mobile"></i>Apply to All Devices</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title"><i class="ti ti-info-circle"></i>Default Features Template</div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:16px">Yeh template naye devices par auto-apply hoga.</p>
+    <div class="feat-grid" id="defaultFeatGrid"><div class="loading"><span class="spinner"></span>Loading...</div></div>
+  </div>
+</div>
+
+<div id="sec-logs" class="section">
+  <div class="section-header">
+    <div class="section-title"><i class="ti ti-list"></i>Activity Logs</div>
+    <button class="btn btn-ghost btn-sm" onclick="document.getElementById('logsList').innerHTML=''"><i class="ti ti-trash"></i>Clear</button>
+  </div>
+  <div class="card">
+    <div id="logsList" style="max-height:500px;overflow-y:auto">
+      <div class="log-item"><div class="log-time">--</div><div class="log-msg">Panel loaded</div></div>
+    </div>
+  </div>
+</div>
+
+</div>
+</div>
+
+<!-- MODALS -->
+<div class="modal-bg" id="modal-device">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="deviceModalTitle">Device</div>
+      <button class="btn-icon" onclick="closeModal('modal-device')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Status</label>
+      <select class="form-input" id="devStatusSel">
+        <option value="active">Active</option>
+        <option value="banned">Banned</option>
+        <option value="suspended">Suspended</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Device Message (optional)</label>
+      <input class="form-input" id="devMsg" placeholder="Custom message for this device">
+    </div>
+    <div class="card-title" style="margin:16px 0 10px"><i class="ti ti-toggle-right" style="color:var(--cyan)"></i>Device Features Override</div>
+    <p style="font-size:11px;color:var(--text3);margin-bottom:12px">Khali = global config. Toggle = device-specific override.</p>
+    <div class="feat-grid" id="devFeatGrid"></div>
+    <div style="display:flex;gap:8px;margin-top:20px;flex-wrap:wrap">
+      <button class="btn btn-green" onclick="saveDevice()"><i class="ti ti-check"></i>Save</button>
+      <button class="btn btn-red" id="banDevBtn"><i class="ti ti-ban"></i>Ban Device</button>
+      <button class="btn btn-ghost" onclick="setDefaultFeaturesToDevice()"><i class="ti ti-layers-intersect"></i>Apply Default</button>
+      <button class="btn btn-ghost" onclick="clearDeviceFeatures()"><i class="ti ti-eraser"></i>Clear Features</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-addkey">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Create License Key</div>
+      <button class="btn-icon" onclick="closeModal('modal-addkey')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Key Name</label>
+      <input class="form-input" id="newKeyName" placeholder="e.g. JAAT6767">
+      <div style="margin-top:6px">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('newKeyName').value=genKey()">Auto Generate</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Status</label>
+      <select class="form-input" id="newKeyStatus">
+        <option value="VALID">VALID</option>
+        <option value="EXPIRED">EXPIRED</option>
+        <option value="BANNED">BANNED</option>
+        <option value="SUSPENDED">SUSPENDED</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Expires (Date)</label>
+      <input class="form-input" type="date" id="newKeyExpires">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Bind to Device ID (optional)</label>
+      <input class="form-input" id="newKeyDevice" placeholder="Leave empty for any device">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn btn-gold" onclick="createKey()"><i class="ti ti-plus"></i>Create Key</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-addkey')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-editkey">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Edit Key: <span id="editKeyName" class="key-mono"></span></div>
+      <button class="btn-icon" onclick="closeModal('modal-editkey')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Status</label>
+      <select class="form-input" id="editKeyStatus">
+        <option value="VALID">VALID</option>
+        <option value="EXPIRED">EXPIRED</option>
+        <option value="BANNED">BANNED</option>
+        <option value="SUSPENDED">SUSPENDED</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Expires</label>
+      <input class="form-input" type="date" id="editKeyExpires">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Bound Device ID</label>
+      <input class="form-input" id="editKeyDevice" placeholder="Leave empty for any device">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn btn-gold" onclick="saveKey()"><i class="ti ti-check"></i>Save</button>
+      <button class="btn btn-red" onclick="deleteKey()"><i class="ti ti-trash"></i>Delete Key</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-editkey')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDYtgOOjfh1kB7GYkZktEBpN0YQxK_neug",
+  authDomain: "prk-mods-d01f4.firebaseapp.com",
+  databaseURL: "https://prk-mods-d01f4-default-rtdb.firebaseio.com",
+  projectId: "prk-mods-d01f4",
+  storageBucket: "prk-mods-d01f4.firebasestorage.app",
+  messagingSenderId: "434552581386",
+  appId: "1:434552581386:web:b011ea7e331bc28f1f9ef3"
+};
+
+const ALL_FEATURES = [
+  {key:'app_active',label:'App Active',default:true},
+  {key:'app_crash',label:'Force Crash',default:false},
+  {key:'kill_switch',label:'Kill Switch',default:false},
+  {key:'auto_fire',label:'Auto Fire',default:true},
+  {key:'special_fire',label:'Special Fire (Redeem Again)',default:true},
+  {key:'special_auto_fire',label:'Special Auto Fire Switch',default:true},
+  {key:'omni_mode',label:'OMNI Mode',default:true},
+  {key:'floating_window',label:'Floating Window',default:true},
+  {key:'tg_monitor',label:'TG Monitor',default:true},
+  {key:'game_tg_monitor',label:'Game TG Monitor',default:true},
+  {key:'pvt_tg_monitor',label:'PVT TG Monitor',default:true},
+  {key:'clear_cache',label:'Clear Cache',default:true},
+];
+
+let db, auth, devicesData={}, keysData={}, configData={}, currentDevId=null, currentKeyId=null;
+let defaultFeatures={};
+
+try {
+  firebase.initializeApp(FIREBASE_CONFIG);
+  db = firebase.database();
+  auth = firebase.auth();
+
+  auth.onAuthStateChanged(user => {
+    if (!user) {
+      document.getElementById('login-screen').style.display = 'flex';
+      document.getElementById('nav').style.display = 'none';
+      document.getElementById('app').style.display = 'none';
+    } else {
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('nav').style.display = 'flex';
+      document.getElementById('app').style.display = 'flex';
+      db.ref('.info/connected').on('value', snap => {
+        const connected = snap.val();
+        document.getElementById('fbDot').className = 'dot' + (connected ? ' connected' : '');
+        document.getElementById('fbStatus').textContent = connected ? 'Connected' : 'Disconnected';
+        if (connected) addLog('Firebase connected', 'success');
+      });
+      loadAll();
+    }
+  });
+} catch(e) {
+  showToast('Firebase error: ' + e.message, 'error');
+}
+
+function adminLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = '';
+  if (!email || !pass) { errEl.textContent = 'Email aur password daalo!'; return; }
+  auth.signInWithEmailAndPassword(email, pass)
+    .catch(() => { errEl.textContent = 'Wrong email or password!'; });
+}
+
+function adminLogout() {
+  if (confirm('Logout karna chahte ho?')) {
+    auth.signOut().then(() => {
+      document.getElementById('login-email').value = '';
+      document.getElementById('login-pass').value = '';
+      showToast('Logged out!', 'success');
+    });
+  }
+}
+
+function loadAll(){ loadDevices(); loadKeys(); loadConfig(); loadDefaultFeatures(); }
+function reloadAll(){ loadAll(); showToast('Refreshed!', 'success'); }
+
+function loadDevices(){
+  db.ref('devices').on('value', snap => {
+    devicesData = snap.val() || {};
+    renderDevices(); updateStats(); renderRecentDevices();
+    addLog('Devices loaded: ' + Object.keys(devicesData).length, 'info');
+  });
+}
+
+function renderDevices(){
+  const tbody = document.getElementById('deviceTable');
+  const search = (document.getElementById('deviceSearch').value || '').toLowerCase();
+  const filter = document.getElementById('devFilter').value;
+  const devices = Object.entries(devicesData);
+  if (!devices.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:30px">No devices registered</td></tr>'; return; }
+  let html = '';
+  devices.forEach(([id, d]) => {
+    const status = d.status || 'unknown';
+    if (filter !== 'all' && status !== filter) return;
+    const model = d.model || 'Unknown';
+    if (search && !id.toLowerCase().includes(search) && !model.toLowerCase().includes(search) && !status.includes(search)) return;
+    const lastActive = d.last_active ? new Date(Number(d.last_active)).toLocaleString() : '—';
+    const hasFeat = d.features && Object.keys(d.features).length > 0;
+    const badgeCls = status === 'active' ? 'badge-green' : status === 'banned' ? 'badge-red' : 'badge-gray';
+    html += `<tr>
+      <td><span class="copy-id" onclick="copyText('${id}')" title="Click to copy">${id.substring(0,12)}...</span></td>
+      <td>${model}</td>
+      <td><span class="badge ${badgeCls}">${status}</span></td>
+      <td>${hasFeat ? '<span class="badge badge-blue">Custom</span>' : '<span class="badge badge-gray">Default</span>'}</td>
+      <td style="font-size:12px;color:var(--text2)">${lastActive}</td>
+      <td>
+        <button class="btn-icon" onclick="openDeviceModal('${id}')"><i class="ti ti-edit"></i></button>
+        <button class="btn-icon" style="color:var(--red)" onclick="confirmBanDevice('${id}')"><i class="ti ti-ban"></i></button>
+      </td>
+    </tr>`;
+  });
+  if (!html) html = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:30px">No results</td></tr>';
+  tbody.innerHTML = html;
+}
+
+function filterDevices(){ renderDevices(); }
+
+function openDeviceModal(devId){
+  currentDevId = devId;
+  const d = devicesData[devId] || {};
+  document.getElementById('deviceModalTitle').textContent = 'Device — ' + devId;
+  document.getElementById('devStatusSel').value = d.status || 'active';
+  document.getElementById('devMsg').value = d.message || '';
+  const grid = document.getElementById('devFeatGrid');
+  grid.innerHTML = '';
+  ALL_FEATURES.forEach(f => {
+    const devFeatVal = d.features && d.features[f.key] !== undefined ? d.features[f.key] : null;
+    const checked = devFeatVal !== null ? devFeatVal : f.default;
+    const isOverride = devFeatVal !== null;
+    grid.innerHTML += `<div class="feat-row">
+      <span class="feat-name" style="${isOverride ? 'color:var(--cyan)' : ''}">${f.label}${isOverride ? ' <span style="font-size:10px;color:var(--cyan)">(override)</span>' : ''}</span>
+      <label class="toggle"><input type="checkbox" id="df_${f.key}" ${checked ? 'checked' : ''}><span class="toggle-slider"></span></label>
+    </div>`;
+  });
+  document.getElementById('banDevBtn').onclick = () => confirmBanDevice(devId);
+  openModal('modal-device');
+}
+
+function saveDevice(){
+  const status = document.getElementById('devStatusSel').value;
+  const msg = document.getElementById('devMsg').value.trim();
+  const updates = { status, message: msg || null };
+  const featObj = {};
+  ALL_FEATURES.forEach(f => { const el = document.getElementById('df_' + f.key); if (el) featObj[f.key] = el.checked; });
+  updates.features = featObj;
+  db.ref('devices/' + currentDevId).update(updates).then(() => {
+    showToast('Device saved!', 'success');
+    addLog('Device updated: ' + currentDevId, 'info');
+    closeModal('modal-device');
+  }).catch(e => showToast(e.message, 'error'));
+}
+
+function confirmBanDevice(devId){
+  if (confirm('Ban device ' + devId + '?')) {
+    db.ref('devices/' + devId + '/status').set('banned').then(() => {
+      showToast('Device banned', 'success');
+      addLog('Device banned: ' + devId, 'info');
+      closeModal('modal-device');
+    });
+  }
+}
+
+function setDefaultFeaturesToDevice(){
+  if (!currentDevId) return;
+  const featObj = {};
+  ALL_FEATURES.forEach(f => { featObj[f.key] = defaultFeatures[f.key] !== undefined ? defaultFeatures[f.key] : f.default; });
+  db.ref('devices/' + currentDevId + '/features').set(featObj).then(() => {
+    showToast('Default features applied!', 'success');
+    openDeviceModal(currentDevId);
+  });
+}
+
+function clearDeviceFeatures(){
+  if (!currentDevId) return;
+  if (confirm('Clear all custom features for this device?')) {
+    db.ref('devices/' + currentDevId + '/features').remove().then(() => {
+      showToast('Features cleared!', 'success');
+      closeModal('modal-device');
+    });
+  }
+}
+
+function setDefaultFeaturesAll(){
+  if (!confirm('Apply default features to ALL devices?')) return;
+  const featObj = {};
+  ALL_FEATURES.forEach(f => { featObj[f.key] = defaultFeatures[f.key] !== undefined ? defaultFeatures[f.key] : f.default; });
+  const updates = {};
+  Object.keys(devicesData).forEach(id => { updates['devices/' + id + '/features'] = featObj; });
+  db.ref().update(updates).then(() => {
+    showToast('Applied to all devices!', 'success');
+    addLog('Default features bulk applied', 'info');
+  });
+}
+
+function autoSetFeaturesForNewDevice(devId){
+  const featObj = {};
+  ALL_FEATURES.forEach(f => { featObj[f.key] = defaultFeatures[f.key] !== undefined ? defaultFeatures[f.key] : f.default; });
+  db.ref('devices/' + devId).once('value').then(snap => {
+    const d = snap.val();
+    if (d && (!d.features || Object.keys(d.features).length === 0)) {
+      db.ref('devices/' + devId + '/features').set(featObj).then(() => {
+        addLog('Auto features set: ' + devId, 'success');
+      });
+    }
+  });
+}
+
+function loadKeys(){
+  db.ref('keys').on('value', snap => {
+    keysData = snap.val() || {};
+    renderKeys(); updateStats();
+    addLog('Keys loaded: ' + Object.keys(keysData).length, 'info');
+  });
+}
+
+function renderKeys(){
+  const tbody = document.getElementById('keyTable');
+  const search = (document.getElementById('keySearch').value || '').toLowerCase();
+  const filter = document.getElementById('keyFilter').value;
+  const keys = Object.entries(keysData);
+  if (!keys.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:30px">No keys</td></tr>'; return; }
+  let html = '';
+  keys.forEach(([id, k]) => {
+    const status = k.status || 'UNKNOWN';
+    if (filter !== 'all' && status !== filter) return;
+    if (search && !id.toLowerCase().includes(search) && !(k.device_id || '').toLowerCase().includes(search)) return;
+    const badgeCls = status === 'VALID' ? 'badge-green' : status === 'EXPIRED' ? 'badge-red' : status === 'BANNED' ? 'badge-red' : 'badge-orange';
+    const isExpired = k.expires && new Date(k.expires) < new Date();
+    const devBound = k.device_id ? `<span class="copy-id" onclick="copyText('${k.device_id}')">${k.device_id.substring(0,10)}...</span>` : '<span style="color:var(--text3)">Any</span>';
+    html += `<tr>
+      <td><span class="key-mono">${id}</span></td>
+      <td><span class="badge ${badgeCls}">${status}</span>${isExpired && status === 'VALID' ? ' <span class="badge badge-red" style="font-size:10px">Expired!</span>' : ''}</td>
+      <td>${devBound}</td>
+      <td style="font-size:12px;color:${isExpired ? 'var(--red)' : 'var(--text2)'}">${k.expires || '—'}</td>
+      <td>
+        <button class="btn-icon" onclick="openEditKey('${id}')"><i class="ti ti-edit"></i></button>
+        <button class="btn-icon" style="color:var(--red)" onclick="deleteKeyDirect('${id}')"><i class="ti ti-trash"></i></button>
+      </td>
+    </tr>`;
+  });
+  if (!html) html = '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:30px">No results</td></tr>';
+  tbody.innerHTML = html;
+}
+
+function filterKeys(){ renderKeys(); }
+
+function genKey(){
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let key = 'PRK';
+  for (let i = 0; i < 5; i++) key += chars[Math.floor(Math.random() * chars.length)];
+  return key;
+}
+
+function createKey(){
+  const name = document.getElementById('newKeyName').value.trim().toUpperCase();
+  if (!name) { showToast('Key name daalo!', 'error'); return; }
+  const status = document.getElementById('newKeyStatus').value;
+  const expires = document.getElementById('newKeyExpires').value;
+  const device = document.getElementById('newKeyDevice').value.trim().toUpperCase();
+  db.ref('keys/' + name).set({ key: name, status, expires: expires || '', device_id: device || '' }).then(() => {
+    showToast('Key created: ' + name, 'success');
+    addLog('Key created: ' + name, 'info');
+    closeModal('modal-addkey');
+    document.getElementById('newKeyName').value = '';
+    document.getElementById('newKeyExpires').value = '';
+    document.getElementById('newKeyDevice').value = '';
+  }).catch(e => showToast(e.message, 'error'));
+}
+
+function openEditKey(id){
+  currentKeyId = id;
+  const k = keysData[id] || {};
+  document.getElementById('editKeyName').textContent = id;
+  document.getElementById('editKeyStatus').value = k.status || 'VALID';
+  document.getElementById('editKeyExpires').value = k.expires || '';
+  document.getElementById('editKeyDevice').value = k.device_id || '';
+  openModal('modal-editkey');
+}
+
+function saveKey(){
+  const status = document.getElementById('editKeyStatus').value;
+  const expires = document.getElementById('editKeyExpires').value;
+  const device = document.getElementById('editKeyDevice').value.trim().toUpperCase();
+  db.ref('keys/' + currentKeyId).update({ status, expires: expires || '', device_id: device || '' }).then(() => {
+    showToast('Key updated!', 'success');
+    closeModal('modal-editkey');
+  }).catch(e => showToast(e.message, 'error'));
+}
+
+function deleteKey(){
+  if (confirm('Delete key ' + currentKeyId + '?')) {
+    db.ref('keys/' + currentKeyId).remove().then(() => {
+      showToast('Key deleted', 'success');
+      closeModal('modal-editkey');
+    });
+  }
+}
+
+function deleteKeyDirect(id){
+  if (confirm('Delete key ' + id + '?')) {
+    db.ref('keys/' + id).remove().then(() => showToast('Key deleted', 'success'));
+  }
+}
+
+function loadConfig(){
+  db.ref('config').on('value', snap => {
+    configData = snap.val() || {};
+    renderConfig(); renderDashConfig();
+    addLog('Config loaded', 'info');
+  });
+}
+
+function renderConfig(){
+  const cc = document.getElementById('configControls');
+  const gf = document.getElementById('globalFeatures');
+  if (!cc || !gf) return;
+  const c = configData;
+  cc.innerHTML = `
+    <div class="config-row">
+      <div><div class="config-key">App Active</div><div class="config-desc">Main app on/off</div></div>
+      <label class="toggle"><input type="checkbox" id="cfg_app_active" ${c.app_active !== false ? 'checked' : ''}><span class="toggle-slider"></span></label>
+    </div>
+    <div class="config-row">
+      <div><div class="config-key">Kill Switch</div><div class="config-desc">Force stop all devices</div></div>
+      <label class="toggle"><input type="checkbox" id="cfg_kill_switch" ${c.kill_switch ? 'checked' : ''}><span class="toggle-slider"></span></label>
+    </div>`;
+  document.getElementById('configMsg').value = c.message || '';
+  document.getElementById('configVersion').value = c.version || '3.0';
+  const feats = c.features || {};
+  let fhtml = '<div class="feat-grid">';
+  ALL_FEATURES.forEach(f => {
+    const val = feats[f.key] !== undefined ? feats[f.key] : f.default;
+    fhtml += `<div class="feat-row">
+      <span class="feat-name">${f.label}</span>
+      <label class="toggle"><input type="checkbox" id="gf_${f.key}" ${val ? 'checked' : ''}><span class="toggle-slider"></span></label>
+    </div>`;
+  });
+  fhtml += '</div>';
+  gf.innerHTML = fhtml;
+}
+
+function saveConfig(){
+  const appActive = document.getElementById('cfg_app_active')?.checked !== false;
+  const killSwitch = document.getElementById('cfg_kill_switch')?.checked || false;
+  const message = document.getElementById('configMsg')?.value || '';
+  const version = document.getElementById('configVersion')?.value || '3.0';
+  const features = {};
+  ALL_FEATURES.forEach(f => { const el = document.getElementById('gf_' + f.key); if (el) features[f.key] = el.checked; });
+  db.ref('config').update({ app_active: appActive, kill_switch: killSwitch, message, version, features }).then(() => {
+    showToast('Config saved!', 'success');
+    addLog('Config updated', 'info');
+  }).catch(e => showToast(e.message, 'error'));
+}
+
+function renderDashConfig(){
+  const el = document.getElementById('dashConfig');
+  if (!el) return;
+  const c = configData;
+  el.innerHTML = `
+    <div class="config-row"><div class="config-key">App Active</div><span class="badge ${c.app_active !== false ? 'badge-green' : 'badge-red'}">${c.app_active !== false ? 'YES' : 'NO'}</span></div>
+    <div class="config-row"><div class="config-key">Kill Switch</div><span class="badge ${c.kill_switch ? 'badge-red' : 'badge-green'}">${c.kill_switch ? 'ON' : 'OFF'}</span></div>
+    <div class="config-row"><div class="config-key">Version</div><span class="badge badge-blue">${c.version || '—'}</span></div>
+    <div class="config-row"><div class="config-key">Message</div><span style="font-size:12px;color:var(--text2)">${c.message || '—'}</span></div>`;
+}
+
+function loadDefaultFeatures(){
+  db.ref('admin_defaults/features').once('value').then(snap => {
+    defaultFeatures = snap.val() || {};
+    ALL_FEATURES.forEach(f => { if (defaultFeatures[f.key] === undefined) defaultFeatures[f.key] = f.default; });
+    renderDefaultFeatGrid();
+  });
+  db.ref('devices').on('child_added', snap => {
+    const d = snap.val();
+    if (d && (!d.features || Object.keys(d.features).length === 0)) {
+      autoSetFeaturesForNewDevice(snap.key);
+    }
+  });
+}
+
+function renderDefaultFeatGrid(){
+  const grid = document.getElementById('defaultFeatGrid');
+  if (!grid) return;
+  let html = '<div class="feat-grid">';
+  ALL_FEATURES.forEach(f => {
+    const val = defaultFeatures[f.key] !== undefined ? defaultFeatures[f.key] : f.default;
+    html += `<div class="feat-row">
+      <span class="feat-name">${f.label}</span>
+      <label class="toggle"><input type="checkbox" id="dft_${f.key}" ${val ? 'checked' : ''}><span class="toggle-slider"></span></label>
+    </div>`;
+  });
+  html += '</div>';
+  grid.innerHTML = html;
+}
+
+function saveDefaultFeatures(){
+  const featObj = {};
+  ALL_FEATURES.forEach(f => { const el = document.getElementById('dft_' + f.key); if (el) { featObj[f.key] = el.checked; defaultFeatures[f.key] = el.checked; } });
+  db.ref('admin_defaults/features').set(featObj).then(() => {
+    showToast('Default features saved!', 'success');
+    addLog('Default features template saved', 'info');
+  });
+}
+
+function applyDefaultToAll(){
+  if (!confirm('Apply to ALL existing devices?')) return;
+  const featObj = {};
+  ALL_FEATURES.forEach(f => { const el = document.getElementById('dft_' + f.key); if (el) featObj[f.key] = el.checked; });
+  const updates = {};
+  Object.keys(devicesData).forEach(id => { updates['devices/' + id + '/features'] = featObj; });
+  db.ref().update(updates).then(() => {
+    showToast('Applied to ' + Object.keys(devicesData).length + ' devices!', 'success');
+    addLog('Default features bulk applied', 'info');
+  });
+}
+
+function updateStats(){
+  const devs = Object.values(devicesData);
+  document.getElementById('s-total').textContent = devs.length;
+  document.getElementById('s-active').textContent = devs.filter(d => d.status === 'active').length;
+  document.getElementById('s-banned').textContent = devs.filter(d => d.status === 'banned').length;
+  const keys = Object.values(keysData);
+  document.getElementById('s-keys').textContent = keys.length;
+  document.getElementById('s-vkeys').textContent = keys.filter(k => k.status === 'VALID').length;
+  document.getElementById('s-ekeys').textContent = keys.filter(k => k.status === 'EXPIRED' || (k.expires && new Date(k.expires) < new Date())).length;
+}
+
+function renderRecentDevices(){
+  const el = document.getElementById('recentDevices');
+  if (!el) return;
+  const devs = Object.entries(devicesData).sort((a,b) => (Number(b[1].last_active)||0)-(Number(a[1].last_active)||0)).slice(0,5);
+  if (!devs.length) { el.innerHTML = '<div style="color:var(--text3);font-size:13px">No devices</div>'; return; }
+  el.innerHTML = devs.map(([id,d]) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-size:13px;color:var(--text)">${(d.model||'Unknown').substring(0,22)}</div>
+        <div style="font-size:11px;color:var(--text3)">${id.substring(0,14)}...</div>
+      </div>
+      <span class="badge ${d.status==='active'?'badge-green':d.status==='banned'?'badge-red':'badge-gray'}">${d.status||'?'}</span>
+    </div>`).join('');
+}
+
+function showSection(name, btnEl, sideEl){
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('show'));
+  document.getElementById('sec-' + name)?.classList.add('show');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.side-item').forEach(b => b.classList.remove('active'));
+  if (btnEl) btnEl.classList.add('active');
+  if (sideEl) sideEl.classList.add('active');
+}
+
+function openModal(id){ document.getElementById(id)?.classList.add('show'); }
+function closeModal(id){ document.getElementById(id)?.classList.remove('show'); }
+document.querySelectorAll('.modal-bg').forEach(m => m.addEventListener('click', e => { if (e.target===m) m.classList.remove('show'); }));
+
+let toastTimer;
+function showToast(msg, type=''){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'show ' + (type||'');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className = '', 2800);
+}
+
+function copyText(txt){
+  navigator.clipboard.writeText(txt).then(() => showToast('Copied!','success')).catch(() => {
+    const el = document.createElement('textarea'); el.value = txt; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el); showToast('Copied!','success');
+  });
+}
+
+function addLog(msg, type){
+  const el = document.getElementById('logsList');
+  if (!el) return;
+  const now = new Date().toLocaleTimeString();
+  const color = type==='success'?'var(--green)':type==='error'?'var(--red)':'var(--text2)';
+  el.insertAdjacentHTML('afterbegin', `<div class="log-item"><div class="log-time">${now}</div><div class="log-msg" style="color:${color}">${msg}</div></div>`);
+  if (el.children.length > 100) el.lastChild.remove();
+}
+
+document.getElementById('newKeyExpires').valueAsDate = new Date(new Date().setFullYear(new Date().getFullYear()+1));
+</script>
+</body>
+</html>
